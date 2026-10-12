@@ -1,0 +1,358 @@
+import json
+import csv
+import os
+
+# File names
+QUIZ_FILE = "quizzes.json"
+RESULT_FILE = "results.csv"
+
+
+# Load quizzes
+def load_quizzes():
+    if os.path.exists(QUIZ_FILE):
+        with open(QUIZ_FILE, "r") as file:
+            return json.load(file)
+    return {}
+
+
+# Save quizzes
+def save_quizzes(quizzes):
+    with open(QUIZ_FILE, "w") as file:
+        json.dump(quizzes, file, indent=4)
+
+
+# Admin Login
+def admin_login():
+    username = input("Enter Admin Username: ")
+    password = input("Enter Admin Password: ")
+
+    if username == "admin" and password == "1234":
+        print("\nLogin Successful!")
+        return True
+
+    print("\nInvalid Login!")
+    return False
+
+
+# Create Quiz
+def create_quiz():
+    quizzes = load_quizzes()
+
+    quiz_name = input("Enter Quiz Name: ")
+
+    if quiz_name in quizzes:
+        print("Quiz already exists!")
+        return
+
+    quizzes[quiz_name] = []
+    save_quizzes(quizzes)
+
+    print("Quiz Created Successfully!")
+
+
+# Add Questions
+def add_question():
+    quizzes = load_quizzes()
+
+    quiz_name = input("Enter Quiz Name: ")
+
+    if quiz_name not in quizzes:
+        print("Quiz Not Found!")
+        return
+
+    question = input("Enter Question: ")
+
+    options = []
+
+    for i in range(4):
+        option = input(f"Enter Option {i+1}: ")
+        options.append(option)
+
+    while True:
+        answer = input("Enter Correct Answer (1-4): ")
+
+        if answer in ["1", "2", "3", "4"]:
+            break
+
+        print("Please enter a number between 1 and 4.")
+
+    quizzes[quiz_name].append({
+        "question": question,
+        "options": options,
+        "answer": int(answer)
+    })
+
+    save_quizzes(quizzes)
+
+    print("Question Added Successfully!")
+
+
+# View Quizzes
+def view_quizzes():
+    quizzes = load_quizzes()
+
+    if not quizzes:
+        print("No Quizzes Available!")
+        return
+
+    print("\nAvailable Quizzes:")
+
+    for name in quizzes:
+        print("-", name)
+
+
+# Delete Question
+def delete_question():
+    quizzes = load_quizzes()
+
+    quiz_name = input("Enter Quiz Name: ")
+
+    if quiz_name not in quizzes:
+        print("Quiz Not Found!")
+        return
+
+    questions = quizzes[quiz_name]
+
+    if not questions:
+        print("No Questions Available!")
+        return
+
+    for i, q in enumerate(questions, 1):
+        print(f"{i}. {q['question']}")
+
+    try:
+        number = int(input("Enter Question Number to Delete: "))
+
+        if 1 <= number <= len(questions):
+            questions.pop(number - 1)
+            save_quizzes(quizzes)
+            print("Question Deleted Successfully!")
+        else:
+            print("Invalid Question Number!")
+
+    except ValueError:
+        print("Please enter a valid number!")
+
+
+# Save Student Result
+def save_result(name, quiz_name, score, total):
+
+    percentage = (score / total) * 100
+
+    file_exists = os.path.exists(RESULT_FILE)
+
+    with open(RESULT_FILE, "a", newline="") as file:
+
+        writer = csv.writer(file)
+
+        if not file_exists or os.path.getsize(RESULT_FILE) == 0:
+            writer.writerow([
+                "Student Name",
+                "Quiz Name",
+                "Score",
+                "Total Marks",
+                "Percentage"
+            ])
+
+        writer.writerow([
+            name,
+            quiz_name,
+            score,
+            total,
+            round(percentage, 2)
+        ])
+
+
+# Attempt Quiz
+def attempt_quiz():
+    quizzes = load_quizzes()
+
+    name = input("Enter Student Name: ")
+
+    view_quizzes()
+
+    quiz_name = input("\nEnter Quiz Name: ")
+
+    if quiz_name not in quizzes:
+        print("Quiz Not Found!")
+        return
+
+    questions = quizzes[quiz_name]
+
+    if not questions:
+        print("No Questions Available!")
+        return
+
+    score = 0
+
+    print("\n========== QUIZ START ==========")
+
+    for i, q in enumerate(questions, 1):
+
+        print(f"\nQ{i}. {q['question']}")
+
+        for j, option in enumerate(q["options"], 1):
+            print(f"{j}. {option}")
+
+        while True:
+            answer = input("Your Answer (1-4): ")
+
+            if answer in ["1", "2", "3", "4"]:
+                break
+
+            print("Invalid answer! Enter 1-4.")
+
+        if int(answer) == q["answer"]:
+            print("Correct Answer!")
+            score += 1
+        else:
+            print("Wrong Answer!")
+
+    total = len(questions)
+
+    percentage = (score / total) * 100
+
+    print("\n========== QUIZ RESULT ==========")
+
+    print("Student Name:", name)
+    print("Quiz Name:", quiz_name)
+    print("Total Questions:", total)
+    print("Correct Answers:", score)
+    print("Percentage:", round(percentage, 2), "%")
+
+    if percentage >= 80:
+        print("Performance: Excellent")
+
+    elif percentage >= 60:
+        print("Performance: Good")
+
+    elif percentage >= 40:
+        print("Performance: Average")
+
+    else:
+        print("Performance: Needs Improvement")
+
+    save_result(name, quiz_name, score, total)
+
+    print("\nResult Saved Successfully!")
+
+
+# Performance Report
+def performance_report():
+
+    if not os.path.exists(RESULT_FILE):
+        print("No Student Results Available!")
+        return
+
+    print("\n========== PERFORMANCE REPORT ==========")
+
+    with open(RESULT_FILE, "r", newline="") as file:
+
+        reader = csv.DictReader(file)
+
+        for row in reader:
+            print("\nStudent:", row["Student Name"])
+            print("Quiz:", row["Quiz Name"])
+            print("Score:", row["Score"])
+            print("Total Marks:", row["Total Marks"])
+            print("Percentage:", row["Percentage"], "%")
+            print("--------------------------------")
+
+
+# Admin Menu
+def admin_menu():
+
+    while True:
+
+        print("\n========== ADMIN MENU ==========")
+        print("1. Create Quiz")
+        print("2. Add Question")
+        print("3. View Quizzes")
+        print("4. Delete Question")
+        print("5. Performance Report")
+        print("6. Logout")
+
+        choice = input("Enter Your Choice: ")
+
+        if choice == "1":
+            create_quiz()
+
+        elif choice == "2":
+            add_question()
+
+        elif choice == "3":
+            view_quizzes()
+
+        elif choice == "4":
+            delete_question()
+
+        elif choice == "5":
+            performance_report()
+
+        elif choice == "6":
+            print("Admin Logged Out!")
+            break
+
+        else:
+            print("Invalid Choice!")
+
+
+# Student Menu
+def student_menu():
+
+    while True:
+
+        print("\n========== STUDENT MENU ==========")
+        print("1. View Available Quizzes")
+        print("2. Attempt Quiz")
+        print("3. Back")
+
+        choice = input("Enter Your Choice: ")
+
+        if choice == "1":
+            view_quizzes()
+
+        elif choice == "2":
+            attempt_quiz()
+
+        elif choice == "3":
+            break
+
+        else:
+            print("Invalid Choice!")
+
+
+# Main Function
+def main():
+
+    while True:
+
+        print("\n================================")
+        print(" ONLINE QUIZ MANAGEMENT SYSTEM")
+        print("================================")
+
+        print("1. Admin Login")
+        print("2. Student Login")
+        print("3. Exit")
+
+        choice = input("Enter Your Choice: ")
+
+        if choice == "1":
+
+            if admin_login():
+                admin_menu()
+
+        elif choice == "2":
+            student_menu()
+
+        elif choice == "3":
+            print("Thank You for Using Quiz System!")
+            break
+
+        else:
+            print("Invalid Choice!")
+
+
+# Program Execution
+if __name__ == "__main__":
+    main()
